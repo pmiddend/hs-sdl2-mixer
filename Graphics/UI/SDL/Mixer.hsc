@@ -76,9 +76,9 @@ import Control.Applicative
 import Prelude hiding (init)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
-import Graphics.UI.SDL.Types
-import Graphics.UI.SDL.Audio (AudioFormat(..), fromAudioFormat, toAudioFormat)
-import Graphics.UI.SDL.Error (getError)
+import Graphics.UI.SDL.Types hiding (RWops)
+--import Graphics.UI.SDL.Audio (AudioFormat(..), fromAudioFormat, toAudioFormat)
+import Graphics.UI.SDL.Basic (getError)
 import Graphics.UI.SDL.Mixer.Types
 
 -- Error handling until something better is decided on in the main lib.
@@ -127,7 +127,8 @@ foreign import ccall unsafe "Mix_OpenAudio"
 openAudio :: Int -> AudioFormat -> Int -> Int -> IO ()
 openAudio freq format channels chunksize = do
   let freq'      = fromIntegral freq
-      format'    = fromAudioFormat format
+      --format'    = fromAudioFormat format
+      format'    = format
       channels'  = fromIntegral channels
       chunksize' = fromIntegral chunksize
   ret <- mixOpenAudio' freq' format' channels' chunksize'
@@ -152,7 +153,8 @@ querySpec =
     ret <- mixQuerySpec' freq' format' channels'
     handleErrorI "querySpec" ret $ \_ -> do
       freq     <- fmap fromIntegral $ peek freq'
-      format   <- fmap toAudioFormat $ peek format'
+      --format   <- fmap toAudioFormat $ peek format'
+      format   <- fmap id $ peek format'
       channels <- fmap fromIntegral $ peek channels'
       return (freq, format, channels)
 

@@ -27,7 +27,7 @@ library
   build-depends:
     base >=4,
     bytestring,
-    SDL2
+    sdl2
   ghc-options: -Wall
   exposed-modules:     
     Graphics.UI.SDL.Mixer,

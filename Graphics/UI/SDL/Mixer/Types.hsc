@@ -8,6 +8,8 @@ module Graphics.UI.SDL.Mixer.Types
   , Channel
   , Volume
   , Fading(..)
+  , RWops
+  , RWopsStruct
   , mkFinalizedChunk
   , mkFinalizedMusic
   , makeVolume
@@ -16,6 +18,9 @@ module Graphics.UI.SDL.Mixer.Types
 
 import Foreign
 import Control.Applicative
+
+data RWopsStruct
+type RWops = ForeignPtr RWopsStruct
 
 data MusicStruct
 type Music = ForeignPtr MusicStruct
