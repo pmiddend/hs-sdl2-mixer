@@ -68,6 +68,9 @@ module Graphics.UI.SDL.Mixer
   , getSoundFonts
   , getChunk
   , closeAudio
+  , mixDefaultFormat
+  , mixDefaultChannels
+  , mixDefaultFrequency
   ) where
 
 import Foreign
@@ -84,8 +87,8 @@ import Graphics.UI.SDL.Mixer.Types
 -- Error handling until something better is decided on in the main lib.
 handleErrorI :: (Num a, Ord a) => String -> a -> (a -> IO b) -> IO b
 handleErrorI fname i fn
-  | i < 0     = fn i
-  | otherwise = (\err -> error $ fname ++ ": " ++ show err) =<< getError
+  | i /= 0     = fn i
+  | otherwise = (\err -> error $ fname ++ ": " ++ show err) =<< peekCString =<< getError
 {-# INLINE handleErrorI #-}
 
 -- | (Major, Minor, Patchlevel)
@@ -115,7 +118,8 @@ foreign import ccall unsafe "Mix_Init"
 
 init :: [MixInitFlag] -> IO ()
 init flags =
-  let flags' = unwrapMixInitFlag $ combineMixInitFlag flags
+  --let flags' = unwrapMixInitFlag $ combineMixInitFlag flags
+  let flags' = 0
   in mixInit' flags'
 
 foreign import ccall unsafe "Mix_Quit"
@@ -127,12 +131,11 @@ foreign import ccall unsafe "Mix_OpenAudio"
 openAudio :: Int -> AudioFormat -> Int -> Int -> IO ()
 openAudio freq format channels chunksize = do
   let freq'      = fromIntegral freq
-      --format'    = fromAudioFormat format
-      format'    = format
       channels'  = fromIntegral channels
       chunksize' = fromIntegral chunksize
-  ret <- mixOpenAudio' freq' format' channels' chunksize'
-  handleErrorI "openAudio" ret (const $ return ())
+  _ <- mixOpenAudio' freq' format channels' chunksize'
+  return ()
+  --handleErrorI "openAudio" ret (const $ return ())
 
 foreign import ccall unsafe "Mix_AllocateChannels"
   mixAllocateChannels' :: #{type int} -> IO #{type int}
@@ -503,6 +506,15 @@ constantToFading #{const MIX_NO_FADING} = NoFading
 constantToFading #{const MIX_FADING_OUT} = FadingOut
 constantToFading #{const MIX_FADING_IN} = FadingIn
 constantToFading _ = error "invalid fading value"
+
+mixDefaultFormat :: AudioFormat
+mixDefaultFormat = #{const MIX_DEFAULT_FORMAT}
+
+mixDefaultChannels :: Int
+mixDefaultChannels = #{const MIX_DEFAULT_CHANNELS}
+
+mixDefaultFrequency :: Int
+mixDefaultFrequency = #{const MIX_DEFAULT_FREQUENCY}
 
 fadingMusic :: IO Fading
 fadingMusic = constantToFading <$> mixFadingMusic'
