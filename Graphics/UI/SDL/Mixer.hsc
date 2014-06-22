@@ -75,6 +75,7 @@ module Graphics.UI.SDL.Mixer
 
 import Foreign
 import Foreign.C.String
+import Foreign.C.Types(CInt)
 import Control.Applicative
 import Prelude hiding (init)
 import qualified Data.ByteString as B
@@ -84,12 +85,13 @@ import Graphics.UI.SDL.Types hiding (RWops)
 import Graphics.UI.SDL.Basic (getError)
 import Graphics.UI.SDL.Mixer.Types
 
--- Error handling until something better is decided on in the main lib.
-handleErrorI :: (Num a, Ord a) => String -> a -> (a -> IO b) -> IO b
-handleErrorI fname i fn
-  | i /= 0     = fn i
+handleError :: (Num a, Ord a) => String -> a -> (a -> Bool) -> (a -> IO b) -> IO b
+handleError fname result predicate handler
+  | predicate result = handler result
   | otherwise = (\err -> error $ fname ++ ": " ++ show err) =<< peekCString =<< getError
-{-# INLINE handleErrorI #-}
+
+handleErrorI :: (Num a, Ord a) => String -> a -> (a -> IO b) -> IO b
+handleErrorI fname i handler = handleError fname i (/= 0) handler
 
 -- | (Major, Minor, Patchlevel)
 version :: (Int, Int, Int)
@@ -114,13 +116,13 @@ combineMixInitFlag :: [MixInitFlag] -> MixInitFlag
 combineMixInitFlag = MixInitFlag . foldr ((.|.) . unwrapMixInitFlag) 0
 
 foreign import ccall unsafe "Mix_Init"
-  mixInit' :: #{type int} -> IO ()
+  mixInit' :: #{type int} -> IO Int
 
 init :: [MixInitFlag] -> IO ()
-init flags =
-  --let flags' = unwrapMixInitFlag $ combineMixInitFlag flags
-  let flags' = 0
-  in mixInit' flags'
+init flags = do
+  let flags' = unwrapMixInitFlag $ combineMixInitFlag flags
+  res <- mixInit' flags'
+  handleError "Mix_Init" res ((== flags') . fromIntegral) (const $ return ())
 
 foreign import ccall unsafe "Mix_Quit"
   quit :: IO ()
@@ -143,7 +145,7 @@ foreign import ccall unsafe "Mix_AllocateChannels"
 allocateChannels :: Int -> IO ()
 allocateChannels numchans = do
   ret <- mixAllocateChannels' (fromIntegral numchans)
-  handleErrorI "allocateChannels" ret (const $ return ())
+  handleError "allocateChannels" ret ((== numchans) . fromIntegral) (const $ return ())
 
 foreign import ccall unsafe "Mix_QuerySpec"
   mixQuerySpec' :: Ptr #{type int} -> Ptr #{type Uint16} -> Ptr #{type int} -> IO #{type int}
@@ -326,7 +328,7 @@ foreign import ccall unsafe "Mix_ReserveChannels"
 reserveChannels :: Int -> IO ()
 reserveChannels num = do
   ret <- mixReserveChannels' (fromIntegral num)
-  handleErrorI "reserveChannels" ret $ (const $ return ())
+  handleError "reserveChannels" ret ((== num) . fromIntegral) $ (const $ return ())
 
 foreign import ccall unsafe "Mix_GroupChannel"
   mixGroupChannel' :: #{type int} -> #{type int} -> IO #{type int}
